@@ -74,7 +74,7 @@ function App() {
     return (
       <ThemeProvider>
         <TraineeProvider traineeId={traineeId}>
-          <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+          <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
             <TraineeSidebar
               currentPage={traineePage}
               onNavigate={setTraineePage}
@@ -122,7 +122,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
         <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <DemoBanner />

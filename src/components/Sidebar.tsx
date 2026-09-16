@@ -113,7 +113,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 lg:block">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-gray-200 dark:border-gray-800 lg:block">
         {sidebar}
       </aside>
 
