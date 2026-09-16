@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { trainees, type Trainee, type FollowUp } from '@/data/mockData';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { type Trainee, type FollowUp } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export type OutcomeStatus =
   | 'Placed'
@@ -22,36 +23,30 @@ export interface EvidenceDocument {
   fileName: string;
   fileType: string;
   uploadedAt: string;
-  simulated: true;
+  verified?: boolean;
 }
 
 export interface OutcomeUpdate {
   employmentStatus: OutcomeStatus;
   verificationStatus: VerificationStatus;
   evidenceDocuments: EvidenceDocument[];
-  // Employment fields
   jobTitle?: string;
   employer?: string;
   joiningDate?: string;
   jobLocation?: string;
   employmentType?: 'Full-time' | 'Part-time' | 'Contract' | 'Temporary' | '';
   salaryRange?: string;
-  // Self-employment fields
   businessType?: string;
   startDate?: string;
   incomeRange?: string;
-  // Apprenticeship fields
   organization?: string;
   role?: string;
   stipend?: string;
   apprenticeshipStatus?: 'Ongoing' | 'Completed' | 'Discontinued' | '';
-  // Higher education / Further training fields
   courseName?: string;
   institutionName?: string;
-  // Shared
   location?: string;
   jobRelevance?: 'High' | 'Moderate' | 'Low';
-  // Legacy compatibility (used by FollowUpTimeline)
   jobRole?: string;
   industry?: string;
   salaryRangeLegacy?: string;
@@ -101,37 +96,114 @@ function mapVerificationToEvidence(v: VerificationStatus): Trainee['evidence'] {
 }
 
 export function TraineeProvider({ traineeId, children }: { traineeId: string; children: ReactNode }) {
-  const baseTrainee = trainees.find((t) => t.id === traineeId) || trainees[0];
+  const [currentTrainee, setCurrentTrainee] = useState<Trainee>(() => {
+    return dataService.getTraineeById(traineeId) || dataService.getTrainees()[0];
+  });
+
   const [outcomeUpdate, setOutcomeUpdate] = useState<OutcomeUpdateRecord | null>(null);
   const [followUpUpdates, setFollowUpUpdates] = useState<Record<string, OutcomeUpdateRecord>>({});
 
-  const mergedTrainee: Trainee = outcomeUpdate
-    ? {
-        ...baseTrainee,
-        employmentStatus: mapStatusToTrainee(outcomeUpdate.employmentStatus),
-        jobRole: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.jobTitle || outcomeUpdate.businessType || outcomeUpdate.role || null)
-          : null,
-        industry: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.employer || outcomeUpdate.organization || outcomeUpdate.institutionName || null)
-          : null,
-        jobLocation: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.jobLocation || outcomeUpdate.location || null)
-          : null,
-        joiningDate: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.joiningDate || outcomeUpdate.startDate || null)
-          : null,
-        salaryRange: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.salaryRange || outcomeUpdate.incomeRange || outcomeUpdate.stipend || null)
-          : null,
-        jobRelevance: isEmployedType(outcomeUpdate.employmentStatus)
-          ? (outcomeUpdate.jobRelevance || null)
-          : null,
-        evidence: mapVerificationToEvidence(outcomeUpdate.verificationStatus),
-      }
-    : baseTrainee;
+  useEffect(() => {
+    const syncTrainee = () => {
+      const found = dataService.getTraineeById(traineeId);
+      if (found) setCurrentTrainee({ ...found });
+    };
 
-  const followUps: FollowUp[] = baseTrainee.followUps.map((f) => {
+    syncTrainee();
+    const unsubscribe = dataService.subscribe(syncTrainee);
+    return () => unsubscribe();
+  }, [traineeId]);
+
+  const updateOutcome = (update: OutcomeUpdate) => {
+    const record: OutcomeUpdateRecord = {
+      ...update,
+      submittedAt: new Date().toLocaleString('en-IN'),
+    };
+    setOutcomeUpdate(record);
+
+    // Persist changes to real storage service
+    dataService.updateOutcome(traineeId, {
+      employmentStatus: mapStatusToTrainee(update.employmentStatus),
+      jobRole: update.jobTitle || update.businessType || update.role || currentTrainee.jobRole,
+      industry: update.employer || update.organization || currentTrainee.industry,
+      jobLocation: update.jobLocation || update.location || currentTrainee.jobLocation,
+      salaryRange: update.salaryRange || update.incomeRange || update.stipend || currentTrainee.salaryRange,
+      evidence: mapVerificationToEvidence(update.verificationStatus),
+      jobRelevance: update.jobRelevance || currentTrainee.jobRelevance,
+    });
+  };
+
+  const updateVerificationStatus = (status: VerificationStatus, notes?: string) => {
+    setOutcomeUpdate((prev) =>
+      prev
+        ? {
+            ...prev,
+            verificationStatus: status,
+            verifierNotes: notes !== undefined ? notes : prev.verifierNotes,
+            reviewedAt: new Date().toLocaleString('en-IN'),
+          }
+        : prev
+    );
+
+    dataService.verifyEvidence(traineeId, mapVerificationToEvidence(status), notes);
+  };
+
+  const uploadEvidence = (fileName: string, fileType: string) => {
+    const doc: EvidenceDocument = {
+      id: `doc-${Date.now()}`,
+      fileName,
+      fileType,
+      uploadedAt: new Date().toLocaleString('en-IN'),
+      verified: false,
+    };
+
+    setOutcomeUpdate((prev) => {
+      const existingDocs = prev?.evidenceDocuments || [];
+      const updatedDocs = [...existingDocs, doc];
+      const newStatus: VerificationStatus = 'Evidence Submitted';
+
+      return {
+        ...(prev || {
+          employmentStatus: currentTrainee.employmentStatus as OutcomeStatus,
+          verificationStatus: newStatus,
+          evidenceDocuments: updatedDocs,
+        }),
+        verificationStatus: newStatus,
+        evidenceDocuments: updatedDocs,
+        submittedAt: new Date().toLocaleString('en-IN'),
+      };
+    });
+
+    dataService.verifyEvidence(traineeId, 'Evidence-Supported', `Trainee uploaded evidence file: ${fileName}`);
+  };
+
+  const updateFollowUp = (period: string, update: OutcomeUpdate) => {
+    setFollowUpUpdates((prev) => ({
+      ...prev,
+      [period]: { ...update, submittedAt: new Date().toLocaleString('en-IN') },
+    }));
+
+    const daysMap: Record<string, number> = {
+      '30 Days': 30,
+      '90 Days': 90,
+      '180 Days': 180,
+      '365 Days': 365,
+    };
+    const days = daysMap[period] || 30;
+
+    dataService.submitFollowUp(traineeId, days, {
+      currentStatus: update.employmentStatus === 'Placed' ? 'Employed' : update.employmentStatus === 'Self-Employed' ? 'Self-employed' : 'Looking for work',
+      occupation: update.jobTitle || update.jobRole || '',
+      employer: update.employer || update.industry || '',
+      location: update.jobLocation || update.location || '',
+      wageRange: update.salaryRange || '',
+      usingSkills: update.jobRelevance === 'High' || update.jobRelevance === 'Moderate',
+      needsTraining: false,
+      comments: 'Follow-up submitted through Trainee Portal',
+    });
+  };
+
+  const followUps: FollowUp[] = currentTrainee.followUps.map((f) => {
     const update = followUpUpdates[f.period];
     if (!update) return f;
     const employed = isEmployedType(update.employmentStatus);
@@ -147,48 +219,20 @@ export function TraineeProvider({ traineeId, children }: { traineeId: string; ch
     };
   });
 
-  const mergedWithFollowUps: Trainee = { ...mergedTrainee, followUps };
-
-  const updateOutcome = (update: OutcomeUpdate) => {
-    setOutcomeUpdate({ ...update, submittedAt: new Date().toLocaleString('en-IN') });
-  };
-
-  const updateVerificationStatus = (status: VerificationStatus, notes?: string) => {
-    setOutcomeUpdate((prev) => prev ? {
-      ...prev,
-      verificationStatus: status,
-      verifierNotes: notes !== undefined ? notes : prev.verifierNotes,
-      reviewedAt: status === 'Verified' || status === 'Needs Update' || status === 'Under Review' ? new Date().toLocaleString('en-IN') : prev.reviewedAt,
-    } : prev);
-  };
-
-  const uploadEvidence = (fileName: string, fileType: string) => {
-    setOutcomeUpdate((prev) => {
-      if (!prev) return prev;
-      const doc: EvidenceDocument = {
-        id: `doc-${Date.now()}`,
-        fileName,
-        fileType,
-        uploadedAt: new Date().toLocaleString('en-IN'),
-        simulated: true,
-      };
-      const newStatus: VerificationStatus = prev.verificationStatus === 'Self-Reported' || prev.verificationStatus === 'Needs Update'
-        ? 'Evidence Submitted'
-        : prev.verificationStatus;
-      return { ...prev, evidenceDocuments: [...prev.evidenceDocuments, doc], verificationStatus: newStatus };
-    });
-  };
-
-  const updateFollowUp = (period: string, update: OutcomeUpdate) => {
-    setFollowUpUpdates((prev) => ({ ...prev, [period]: { ...update, submittedAt: new Date().toLocaleString('en-IN') } }));
-  };
-
   return (
-    <TraineeContext.Provider value={{
-      traineeId, trainee: mergedWithFollowUps, outcomeUpdate, updateOutcome,
-      updateVerificationStatus, uploadEvidence,
-      followUpUpdates, followUps, updateFollowUp,
-    }}>
+    <TraineeContext.Provider
+      value={{
+        traineeId,
+        trainee: { ...currentTrainee, followUps },
+        outcomeUpdate,
+        updateOutcome,
+        updateVerificationStatus,
+        uploadEvidence,
+        followUpUpdates,
+        followUps,
+        updateFollowUp,
+      }}
+    >
       {children}
     </TraineeContext.Provider>
   );

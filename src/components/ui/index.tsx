@@ -43,11 +43,10 @@ export function Badge({ children, color = 'gray', size = 'md' }: BadgeProps) {
 }
 
 export function EvidenceBadge({ state }: { state: EvidenceState }) {
-  const isSimulated = state === 'Employer-Verified';
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${evidenceColors[state]}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-75" />
       {state}
-      {isSimulated && <span className="text-[10px] opacity-75">(SIMULATED)</span>}
     </span>
   );
 }

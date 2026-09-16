@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   GraduationCap, Search, Plus, Upload, X, FileUp, CheckCircle2,
   AlertTriangle, Download, Filter, Building, Calendar, BadgeCheck,
   Edit3, Trash2,
 } from 'lucide-react';
 import { Card, SectionTitle, Badge } from '@/components/ui';
-import { trainees, trainingStatusColors, csvSampleData, type Trainee, type TrainingStatus } from '@/data/mockData';
+import { trainingStatusColors, csvSampleData, type Trainee, type TrainingStatus } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 interface TrainingRecord {
   id: string;
@@ -42,7 +43,7 @@ function toTrainingRecord(t: Trainee): TrainingRecord {
 }
 
 export function TrainingData() {
-  const [records, setRecords] = useState<TrainingRecord[]>(trainees.map(toTrainingRecord));
+  const [records, setRecords] = useState<TrainingRecord[]>(() => dataService.getTrainees().map(toTrainingRecord));
   const [search, setSearch] = useState('');
   const [filterProvider, setFilterProvider] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -50,6 +51,13 @@ export function TrainingData() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState<TrainingRecord | null>(null);
+
+  useEffect(() => {
+    const unsub = dataService.subscribe(() => {
+      setRecords(dataService.getTrainees().map(toTrainingRecord));
+    });
+    return () => unsub();
+  }, []);
 
   const providers = useMemo(() => [...new Set(records.map((r) => r.provider))], [records]);
   const districts = useMemo(() => [...new Set(records.map((r) => r.district))], [records]);
@@ -74,6 +82,68 @@ export function TrainingData() {
     } else {
       setRecords((prev) => [record, ...prev]);
     }
+
+    const existing = dataService.getTraineeById(record.id);
+    const updatedTrainee: Trainee = existing
+      ? {
+          ...existing,
+          name: record.traineeName,
+          courseName: record.course,
+          providerName: record.provider,
+          trainingCentre: record.centre,
+          district: record.district,
+          state: record.state,
+          startDate: record.startDate,
+          completionDate: record.completionDate,
+          skills: record.skills.split(';').map((s) => s.trim()),
+          trainingStatus: record.certificationStatus,
+        }
+      : {
+          id: record.id,
+          unifiedId: record.traineeId,
+          name: record.traineeName,
+          age: 23,
+          gender: 'Female',
+          district: record.district,
+          state: record.state,
+          education: 'Graduate',
+          skills: record.skills.split(';').map((s) => s.trim()),
+          courseName: record.course,
+          providerId: 'P01',
+          providerName: record.provider,
+          cohort: record.programme,
+          certification: 'NSDC Certificate Level 4',
+          certified: record.certificationStatus === 'Certified',
+          employmentStatus: 'Unplaced',
+          jobRole: null,
+          industry: null,
+          jobLocation: null,
+          joiningDate: null,
+          salary: null,
+          salaryRange: null,
+          jobRelevance: null,
+          retentionMonths: 0,
+          isRetained: false,
+          isApprenticeship: false,
+          isSelfEmployed: false,
+          evidence: 'Self-Reported',
+          followUps: [],
+          timeline: [],
+          skillReadinessScore: 75,
+          skillReadinessBreakdown: [],
+          warnings: [],
+          trainingStatus: record.certificationStatus,
+          dateOfBirth: '2002-05-15',
+          phone: '+91 98765 43210',
+          email: `${record.traineeName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+          institution: 'Skill Academy',
+          trainingCentre: record.centre,
+          startDate: record.startDate,
+          completionDate: record.completionDate,
+          consentRecords: [],
+        };
+
+    dataService.updateTrainee(updatedTrainee);
     setShowAddModal(false);
     setEditingRecord(null);
   };

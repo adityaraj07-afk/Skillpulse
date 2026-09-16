@@ -55,7 +55,7 @@ export function PrivacyConsent() {
             <DataMinRow label="Education & Skills" status="Collected" reason="Skill matching" />
             <DataMinRow label="Employment status" status="Collected" reason="Outcome tracking" />
             <DataMinRow label="Salary range" status="Collected" reason="Wage progression" />
-            <DataMinRow label="Aadhaar" status="Not Collected" reason="Not required for prototype" />
+            <DataMinRow label="Aadhaar" status="Not Collected" reason="Data minimization principle (DPDP Act 2023)" />
             <DataMinRow label="Phone number" status="Anonymized" reason="Follow-up only" />
             <DataMinRow label="Bank details" status="Not Collected" reason="Not required" />
             <DataMinRow label="Personal documents" status="Not Stored" reason="Only evidence metadata" />

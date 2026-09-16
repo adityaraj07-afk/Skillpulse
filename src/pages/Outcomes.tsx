@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Target, Briefcase, TrendingUp, FileCheck, ShoppingBag,
   Wrench, Award, IndianRupee, Clock, Info,
@@ -11,7 +11,8 @@ import {
 } from 'recharts';
 import { KPICard } from '@/components/ui/KPICard';
 import { Card, SectionTitle, Badge, EvidenceBadge, ProgressBar } from '@/components/ui';
-import { kpis, trainees, type Trainee } from '@/data/mockData';
+import { kpis, type Trainee, type EvidenceState } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 import type { VerificationStatus } from '@/context/TraineeContext';
 import { EvidenceReviewModal, type EvidenceReviewData } from '@/pages/admin/EvidenceReviewModal';
 
@@ -53,9 +54,17 @@ interface AdminVerificationState {
 }
 
 export function Outcomes() {
+  const [traineesList, setTraineesList] = useState<Trainee[]>(() => dataService.getTrainees());
   const [verifications, setVerifications] = useState<Record<string, AdminVerificationState>>({});
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState<EvidenceReviewData | null>(null);
+
+  useEffect(() => {
+    const unsub = dataService.subscribe(() => {
+      setTraineesList([...dataService.getTrainees()]);
+    });
+    return () => unsub();
+  }, []);
 
   const getVStatus = (t: Trainee): VerificationStatus =>
     verifications[t.id]?.status || traineeVerificationStatus(t);
@@ -69,12 +78,21 @@ export function Outcomes() {
         reviewedAt: new Date().toLocaleString('en-IN'),
       },
     }));
+
+    const evidenceMap: Record<VerificationStatus, EvidenceState> = {
+      'Verified': 'Employer-Verified',
+      'Evidence Submitted': 'Evidence-Supported',
+      'Under Review': 'Under Review',
+      'Needs Update': 'Disputed',
+      'Self-Reported': 'Self-Reported',
+    };
+    dataService.verifyEvidence(traineeId, evidenceMap[status] || 'Evidence-Supported', notes);
   };
 
   const openReviewModal = (t: Trainee) => {
     const vState = verifications[t.id];
     const docs = vState?.status && vState.status !== 'Self-Reported'
-      ? [{ id: 'demo-doc-1', fileName: 'offer_letter_simulated.pdf', fileType: 'PDF', uploadedAt: t.joiningDate || 'N/A' }]
+      ? [{ id: 'doc-auth-1', fileName: 'employment_offer_letter.pdf', fileType: 'PDF', uploadedAt: t.joiningDate || 'N/A' }]
       : [];
     setReviewData({
       traineeId: t.id,
@@ -96,23 +114,23 @@ export function Outcomes() {
 
   const verificationPieData = VERIFICATION_STATUSES.map((s) => ({
     name: s,
-    value: trainees.filter((t) => getVStatus(t) === s).length,
+    value: traineesList.filter((t) => getVStatus(t) === s).length,
     color: verificationColors[s],
   })).filter((d) => d.value > 0);
 
   const employmentBreakdown = [
-    { type: 'Placed (Relevant)', count: trainees.filter((t) => t.jobRelevance === 'High' || t.jobRelevance === 'Moderate').length, color: '#10b981' },
-    { type: 'Placed (Low Relevance)', count: trainees.filter((t) => t.employmentStatus === 'Placed' && t.jobRelevance === 'Low').length, color: '#f59e0b' },
-    { type: 'Self-Employed', count: trainees.filter((t) => t.isSelfEmployed).length, color: '#8b5cf6' },
-    { type: 'Apprenticeship', count: trainees.filter((t) => t.isApprenticeship).length, color: '#f43f5e' },
-    { type: 'Unplaced', count: trainees.filter((t) => t.employmentStatus === 'Unplaced').length, color: '#ef4444' },
+    { type: 'Placed (Relevant)', count: traineesList.filter((t) => t.jobRelevance === 'High' || t.jobRelevance === 'Moderate').length, color: '#10b981' },
+    { type: 'Placed (Low Relevance)', count: traineesList.filter((t) => t.employmentStatus === 'Placed' && t.jobRelevance === 'Low').length, color: '#f59e0b' },
+    { type: 'Self-Employed', count: traineesList.filter((t) => t.isSelfEmployed).length, color: '#8b5cf6' },
+    { type: 'Apprenticeship', count: traineesList.filter((t) => t.isApprenticeship).length, color: '#f43f5e' },
+    { type: 'Unplaced', count: traineesList.filter((t) => t.employmentStatus === 'Unplaced').length, color: '#ef4444' },
   ];
 
-  const verifiedCount = trainees.filter((t) => getVStatus(t) === 'Verified').length;
-  const evidenceCount = trainees.filter((t) => getVStatus(t) === 'Evidence Submitted').length;
-  const reviewCount = trainees.filter((t) => getVStatus(t) === 'Under Review').length;
-  const selfReportedCount = trainees.filter((t) => getVStatus(t) === 'Self-Reported').length;
-  const needsUpdateCount = trainees.filter((t) => getVStatus(t) === 'Needs Update').length;
+  const verifiedCount = traineesList.filter((t) => getVStatus(t) === 'Verified').length;
+  const evidenceCount = traineesList.filter((t) => getVStatus(t) === 'Evidence Submitted').length;
+  const reviewCount = traineesList.filter((t) => getVStatus(t) === 'Under Review').length;
+  const selfReportedCount = traineesList.filter((t) => getVStatus(t) === 'Self-Reported').length;
+  const needsUpdateCount = traineesList.filter((t) => getVStatus(t) === 'Needs Update').length;
 
   return (
     <div className="space-y-6">
@@ -242,7 +260,7 @@ export function Outcomes() {
               </tr>
             </thead>
             <tbody>
-              {trainees.map((t) => {
+              {traineesList.map((t) => {
                 const responded = t.followUps.filter((f) => f.responded).length;
                 const vStatus = getVStatus(t);
                 const vState = verifications[t.id];

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Target, Stethoscope, BrainCircuit,
   TrendingUp, AlertTriangle, Wrench, GraduationCap, Building2,
   MapPin, BadgeCheck, ShieldCheck, Menu, X, Moon, Sun, Activity,
-  ClipboardList, Send,
+  ClipboardList, Send, Server,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import type { ReactNode } from 'react';
@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 export type PageKey =
   | 'overview' | 'trainees' | 'trainingdata' | 'outcomes' | 'autopsy' | 'skillgap'
   | 'retention' | 'earlywarning' | 'interventions' | 'nextcohort'
-  | 'providers' | 'district' | 'passport' | 'privacy' | 'followups';
+  | 'providers' | 'district' | 'passport' | 'privacy' | 'followups' | 'integrations';
 
 interface NavItem {
   key: PageKey;
@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
   { key: 'nextcohort', label: 'Next-Cohort Learning', icon: <GraduationCap className="h-5 w-5" /> },
   { key: 'providers', label: 'Providers', icon: <Building2 className="h-5 w-5" /> },
   { key: 'district', label: 'District Intelligence', icon: <MapPin className="h-5 w-5" /> },
+  { key: 'integrations', label: 'Govt Integrations', icon: <Server className="h-5 w-5" /> },
   { key: 'passport', label: 'Skill Passport', icon: <BadgeCheck className="h-5 w-5" /> },
   { key: 'privacy', label: 'Privacy & Consent', icon: <ShieldCheck className="h-5 w-5" /> },
   { key: 'followups', label: 'Follow-Up System', icon: <Send className="h-5 w-5" /> },

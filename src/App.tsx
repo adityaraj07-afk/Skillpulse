@@ -17,6 +17,9 @@ import { SkillPassport } from '@/pages/SkillPassport';
 import { PrivacyConsent } from '@/pages/PrivacyConsent';
 import { TrainingData } from '@/pages/TrainingData';
 import { FollowUps } from '@/pages/FollowUps';
+import { Integrations } from '@/pages/Integrations';
+import { ReportExportModal } from '@/components/ReportExportModal';
+import { FileText } from 'lucide-react';
 import { TraineeLogin } from '@/pages/trainee/TraineeLogin';
 import { TraineeSidebar, type TraineePageKey } from '@/components/TraineeSidebar';
 import { TraineeProvider } from '@/context/TraineeContext';
@@ -92,6 +95,8 @@ function App() {
     );
   }
 
+  const [showReportModal, setShowReportModal] = useState(false);
+
   // --- Admin mode ---
   const renderPage = () => {
     switch (currentPage) {
@@ -107,6 +112,7 @@ function App() {
       case 'nextcohort': return <NextCohortLearning />;
       case 'providers': return <Providers />;
       case 'district': return <DistrictIntelligence />;
+      case 'integrations': return <Integrations />;
       case 'passport': return <SkillPassport />;
       case 'privacy': return <PrivacyConsent />;
       case 'followups': return <FollowUps />;
@@ -123,19 +129,28 @@ function App() {
           <main className="flex-1 overflow-y-auto p-4 pt-16 lg:p-6 lg:pt-6">
             <div className="mx-auto max-w-7xl animate-fade-in">
               {renderPage()}
-              {/* Trainee portal access */}
-              <div className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-800">
+              {/* Admin Actions Footer */}
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-6 dark:border-gray-800">
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="flex items-center gap-2 rounded-lg border border-brand-300 bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                >
+                  <FileText className="h-4 w-4" />
+                  Generate Official Impact Report (PDF/Print)
+                </button>
+
                 <button
                   onClick={() => { setTraineeId(null); setMode('trainee'); }}
-                  className="flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-900/20 dark:text-brand-300 dark:hover:bg-brand-900/30"
+                  className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
-                  Trainee Portal Login →
+                  Switch to Trainee Portal Login →
                 </button>
               </div>
             </div>
           </main>
         </div>
       </div>
+      <ReportExportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
     </ThemeProvider>
   );
 }

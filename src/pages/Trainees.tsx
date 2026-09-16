@@ -1,24 +1,33 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Users, Search, Filter, X, GraduationCap, Briefcase,
   MapPin, Calendar, IndianRupee, Award, ChevronRight,
   TrendingUp, Clock, FileCheck, AlertTriangle,
 } from 'lucide-react';
 import { Card, Badge, EvidenceBadge, ProgressBar, SectionTitle } from '@/components/ui';
-import { trainees, type Trainee } from '@/data/mockData';
+import { type Trainee } from '@/data/mockData';
+import { dataService } from '@/services/dataService';
 
 export function Trainees() {
+  const [traineesList, setTraineesList] = useState<Trainee[]>(() => dataService.getTrainees());
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedTrainee, setSelectedTrainee] = useState<Trainee | null>(null);
 
+  useEffect(() => {
+    const unsub = dataService.subscribe(() => {
+      setTraineesList([...dataService.getTrainees()]);
+    });
+    return () => unsub();
+  }, []);
+
   const filtered = useMemo(() => {
-    return trainees.filter((t) => {
+    return traineesList.filter((t) => {
       const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.unifiedId.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.employmentStatus === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [traineesList, search, statusFilter]);
 
   if (selectedTrainee) {
     return <TraineeProfile trainee={selectedTrainee} onBack={() => setSelectedTrainee(null)} />;

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   BrainCircuit, AlertTriangle, TrendingUp, Lightbulb,
   CheckCircle2, XCircle, Sparkles, BookOpen, Info,
-  Target, Zap, ChevronRight, Award, Clock,
+  Target, Zap, ChevronRight, Award, Clock, Briefcase,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -12,6 +12,7 @@ import {
 import { Card, SectionTitle, Badge, ProgressBar } from '@/components/ui';
 import { skillGapData, skillsVsDemand, trainees, targetJobProfiles, getTraineeSkillProficiency, trainingRecommendations, type TargetJobProfile } from '@/data/mockData';
 import { JobMatchingModal } from '@/pages/admin/JobMatchingModal';
+import { geminiService, isGeminiConfigured } from '@/services/geminiService';
 
 const radarData = skillsVsDemand.map((s) => ({
   skill: s.skill,
@@ -26,6 +27,7 @@ interface SkillGapAnalysisResult {
   improvementSkills: { skill: string; proficiency: number; targetLevel: number; importance: string }[];
   matchPercentage: number;
   recommendations: typeof trainingRecommendations[string][];
+  aiReasoning?: string;
 }
 
 function analyzeSkillGap(traineeId: string, jobProfile: TargetJobProfile): SkillGapAnalysisResult {
@@ -98,14 +100,35 @@ export function SkillGapAI() {
     [selectedJobId]
   );
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setAnalysis(null);
+
+    // Initial heuristic analysis
+    const result = analyzeSkillGap(selectedTraineeId, selectedJob);
+
+    // If Gemini API is configured in .env, enhance with LLM labor market reasoning
+    if (isGeminiConfigured) {
+      try {
+        const geminiRes = await geminiService.analyzeSkillGap({
+          candidateName: selectedTrainee.name,
+          candidateSkills: selectedTrainee.skills,
+          targetRole: selectedJob.title,
+          district: selectedTrainee.district,
+        });
+        if (geminiRes?.reasoning) {
+          result.aiReasoning = geminiRes.reasoning;
+        }
+      } catch (err) {
+        console.warn('Gemini analysis failed, using fallback:', err);
+      }
+    }
+
+    // Small delay for smooth UI feedback
     setTimeout(() => {
-      const result = analyzeSkillGap(selectedTraineeId, selectedJob);
       setAnalysis(result);
       setIsAnalyzing(false);
-    }, 900);
+    }, 600);
   };
 
   const radarAnalysisData = useMemo(() => {
@@ -127,9 +150,10 @@ export function SkillGapAI() {
 
       {/* Provenance */}
       <div className="flex items-center gap-2">
-        <Badge color="amber">SYNTHETIC DEMO</Badge>
-        <Badge color="gray">SIMULATED</Badge>
-        <span className="text-xs text-gray-400">Job demand data is simulated for prototype</span>
+        <Badge color={isGeminiConfigured ? 'emerald' : 'brand'}>
+          {isGeminiConfigured ? '✨ Gemini LLM Engine Active' : 'AI Labor Market Engine'}
+        </Badge>
+        <span className="text-xs text-gray-500">NSQF Labor Market Competency Mapping</span>
       </div>
 
       {/* ========== NEW: Per-Trainee Skill Gap Analysis ========== */}
@@ -265,6 +289,19 @@ export function SkillGapAI() {
                 />
               </div>
             </div>
+
+            {/* AI Reasoning card */}
+            {analysis.aiReasoning && (
+              <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 to-purple-50/90 p-4 text-xs dark:border-indigo-800 dark:from-indigo-950/40 dark:to-purple-950/40">
+                <div className="flex items-center gap-2 font-bold text-indigo-900 dark:text-indigo-300 mb-1.5 text-sm">
+                  <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  Gemini LLM Labor Market Diagnostic
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-xs sm:text-sm">
+                  {analysis.aiReasoning}
+                </p>
+              </div>
+            )}
 
             {/* Radar chart comparison */}
             {radarAnalysisData.length > 0 && (

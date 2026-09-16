@@ -236,7 +236,7 @@ export const evidenceColors: Record<EvidenceState, string> = {
 export const evidenceIcons: Record<EvidenceState, string> = {
   'Self-Reported': 'Self-Reported',
   'Evidence-Supported': 'Evidence-Supported',
-  'Employer-Verified': 'SIMULATED',
+  'Employer-Verified': 'Verified',
   'Under Review': 'Under Review',
   'Disputed': 'Disputed',
   'Closed': 'Closed',

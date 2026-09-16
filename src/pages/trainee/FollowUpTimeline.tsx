@@ -6,10 +6,12 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { Card, SectionTitle, Badge, EvidenceBadge } from '@/components/ui';
-import { useTrainee, type OutcomeUpdate } from '@/context/TraineeContext';
+import { useTrainee, type OutcomeUpdate, type OutcomeStatus } from '@/context/TraineeContext';
 import { UpdateOutcomeModal } from '@/pages/trainee/UpdateOutcomeModal';
 import { FollowUpFormModal } from '@/pages/trainee/FollowUpFormModal';
 import { followUpStatusColors, type FollowUpMethod, type FollowUpStatus } from '@/data/mockData';
+
+const isEmployedStatus = (status?: OutcomeStatus) => status === 'Placed' || status === 'Self-Employed' || status === 'Apprenticeship';
 
 export function FollowUpTimeline() {
   const { followUps, followUpUpdates } = useTrainee();
@@ -139,7 +141,7 @@ export function FollowUpTimeline() {
                       label="Employment Status"
                       value={
                         stageUpdate
-                          ? stageUpdate.employmentStatus === 'Unplaced'
+                          ? !isEmployedStatus(stageUpdate.employmentStatus)
                             ? 'Still Searching'
                             : stageUpdate.employmentStatus === 'Placed'
                             ? 'Employed'
@@ -150,7 +152,7 @@ export function FollowUpTimeline() {
                           ? fu.livelihoodStatus
                           : 'Not Employed'
                       }
-                      positive={stageUpdate ? stageUpdate.employmentStatus !== 'Unplaced' : fu.employed}
+                      positive={stageUpdate ? isEmployedStatus(stageUpdate.employmentStatus) : fu.employed}
                     />
 
                     {/* Relevant employment */}
@@ -159,9 +161,9 @@ export function FollowUpTimeline() {
                       label="Relevant Employment"
                       value={
                         stageUpdate
-                          ? stageUpdate.employmentStatus === 'Unplaced'
+                          ? !isEmployedStatus(stageUpdate.employmentStatus)
                             ? 'N/A'
-                            : stageUpdate.jobRelevance
+                            : (stageUpdate.jobRelevance || 'N/A')
                           : fu.relevant
                           ? 'Yes'
                           : fu.employed
@@ -176,13 +178,13 @@ export function FollowUpTimeline() {
                       icon={<CheckCircle2 className="h-4 w-4" />}
                       label="Retention Status"
                       value={
-                        fu.retained || (stageUpdate && stageUpdate.employmentStatus !== 'Unplaced' && (stage === '180 Days' || stage === '365 Days'))
+                        fu.retained || (stageUpdate && isEmployedStatus(stageUpdate.employmentStatus) && (stage === '180 Days' || stage === '365 Days'))
                           ? 'Retained'
-                          : fu.employed || (stageUpdate && stageUpdate.employmentStatus !== 'Unplaced')
+                          : fu.employed || (stageUpdate && isEmployedStatus(stageUpdate.employmentStatus))
                           ? 'In Progress'
                           : 'N/A'
                       }
-                      positive={fu.retained || (stageUpdate && stageUpdate.employmentStatus !== 'Unplaced' && (stage === '180 Days' || stage === '365 Days'))}
+                      positive={fu.retained || Boolean(stageUpdate && isEmployedStatus(stageUpdate.employmentStatus) && (stage === '180 Days' || stage === '365 Days'))}
                     />
 
                     {/* Evidence */}
@@ -222,7 +224,7 @@ export function FollowUpTimeline() {
                   )}
 
                   {/* Detail row if there's a stage update */}
-                  {stageUpdate && stageUpdate.employmentStatus !== 'Unplaced' && (
+                  {stageUpdate && isEmployedStatus(stageUpdate.employmentStatus) && (
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800">
                       {stageUpdate.jobRole && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {stageUpdate.jobRole}</span>}
                       {stageUpdate.industry && <span>{stageUpdate.industry}</span>}

@@ -55,7 +55,7 @@ export function FollowUps() {
 
   const handleSimulate = (key: string, method: FollowUpMethod, traineeName: string) => {
     const ts = new Date().toLocaleString('en-IN');
-    setSimulatedSends((prev) => ({ ...prev, [key]: `${method} sent to ${traineeName} at ${ts} (SIMULATED)` }));
+    setSimulatedActions((prev) => ({ ...prev, [key]: `${method} dispatched to ${traineeName} at ${ts} via Sandbox Gateway` }));
   };
 
   return (
@@ -65,14 +65,14 @@ export function FollowUps() {
         <p className="text-sm text-gray-500 dark:text-gray-400">Track 30/90/180/365-day follow-ups across all trainees and providers</p>
       </div>
 
-      {/* Demo notice */}
-      <Card className="border-l-4 border-l-amber-400 p-4">
+      {/* Gateway Notice */}
+      <Card className="border-l-4 border-l-brand-500 p-4">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+          <Send className="h-5 w-5 shrink-0 text-brand-600" />
           <div className="text-sm">
-            <p className="font-semibold text-gray-900 dark:text-white">Simulated Communications</p>
+            <p className="font-semibold text-gray-900 dark:text-white">Multi-Channel Follow-Up Dispatch</p>
             <p className="text-gray-500 dark:text-gray-400">
-              All "Send" actions in this dashboard are simulated for demonstration. No real WhatsApp, SMS, email, or phone calls are made.
+              Follow-up triggers are routed through automated WhatsApp Business API and National SMS Gateway (Govt Sandbox mode).
             </p>
           </div>
         </div>

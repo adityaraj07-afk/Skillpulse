@@ -1,7 +1,8 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "skillpulse",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "SkillPulse — Longitudinal Skilling Outcomes & Impact Measurement System (SIH 2026)",
   "type": "module",
   "scripts": {
     "dev": "vite",

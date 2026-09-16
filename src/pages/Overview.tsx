@@ -30,8 +30,11 @@ export function Overview({ onNavigate }: OverviewProps) {
           Tracking skilling outcomes, diagnosing value leakage, and connecting interventions to the next cohort.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
+          <button onClick={() => onNavigate('integrations')} className="rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold backdrop-blur transition hover:bg-white/30 border border-white/20">
+            Govt Integrations Gateway (EPFO/GSTN) →
+          </button>
           <button onClick={() => onNavigate('autopsy')} className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/25">
-            Open Outcome Autopsy →
+            Outcome Autopsy →
           </button>
           <button onClick={() => onNavigate('skillgap')} className="rounded-lg bg-white/15 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/25">
             Skill Gap AI →
