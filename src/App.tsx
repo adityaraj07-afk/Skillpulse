@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Sidebar, type PageKey } from '@/components/Sidebar';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -37,16 +37,61 @@ function App() {
   const [traineeId, setTraineeId] = useState<string | null>(null);
   const [pendingWarning, setPendingWarning] = useState<EarlyWarningType | null>(null);
 
+  const adminMainRef = useRef<HTMLElement | null>(null);
+  const traineeMainRef = useRef<HTMLElement | null>(null);
+
+  // Scroll main container to top whenever currentPage changes
+  useEffect(() => {
+    if (adminMainRef.current) {
+      adminMainRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, left: 0 });
+  }, [currentPage]);
+
+  // Scroll trainee container to top whenever traineePage changes
+  useEffect(() => {
+    if (traineeMainRef.current) {
+      traineeMainRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, left: 0 });
+  }, [traineePage]);
+
+  const handleAdminNavigate = (page: PageKey) => {
+    if (page === currentPage) {
+      adminMainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setCurrentPage(page);
+      if (adminMainRef.current) {
+        adminMainRef.current.scrollTop = 0;
+      }
+    }
+  };
+
+  const handleTraineeNavigate = (page: TraineePageKey) => {
+    if (page === traineePage) {
+      traineeMainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setTraineePage(page);
+      if (traineeMainRef.current) {
+        traineeMainRef.current.scrollTop = 0;
+      }
+    }
+  };
+
   const handleTraineeLogin = (id: string) => {
     setTraineeId(id);
     setTraineePage('dashboard');
     setMode('trainee');
+    if (traineeMainRef.current) traineeMainRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0 });
   };
 
   const handleTraineeLogout = () => {
     setTraineeId(null);
     setTraineePage('dashboard');
     setMode('admin');
+    if (adminMainRef.current) adminMainRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0 });
   };
 
   // --- Trainee mode ---
@@ -63,11 +108,11 @@ function App() {
 
     const renderTraineePage = () => {
       switch (traineePage) {
-        case 'dashboard': return <TraineeDashboard traineeId={traineeId} onNavigate={setTraineePage} />;
+        case 'dashboard': return <TraineeDashboard traineeId={traineeId} onNavigate={handleTraineeNavigate} />;
         case 'profile': return <TraineeProfile traineeId={traineeId} />;
         case 'passport': return <SkillPassport />;
         case 'privacy': return <TraineePrivacy traineeId={traineeId} />;
-        default: return <TraineeDashboard traineeId={traineeId} onNavigate={setTraineePage} />;
+        default: return <TraineeDashboard traineeId={traineeId} onNavigate={handleTraineeNavigate} />;
       }
     };
 
@@ -77,14 +122,14 @@ function App() {
           <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
             <TraineeSidebar
               currentPage={traineePage}
-              onNavigate={setTraineePage}
+              onNavigate={handleTraineeNavigate}
               onLogout={handleTraineeLogout}
               traineeName={trainee.name}
             />
             <div className="flex flex-1 flex-col overflow-hidden">
               <DemoBanner />
-              <main className="flex-1 overflow-y-auto p-4 pt-16 lg:p-6 lg:pt-6">
-                <div className="mx-auto max-w-7xl animate-fade-in">
+              <main ref={traineeMainRef} className="flex-1 overflow-y-auto p-4 pt-16 lg:p-6 lg:pt-6">
+                <div key={traineePage} className="mx-auto max-w-7xl animate-fade-in">
                   {renderTraineePage()}
                 </div>
               </main>
@@ -100,14 +145,14 @@ function App() {
   // --- Admin mode ---
   const renderPage = () => {
     switch (currentPage) {
-      case 'overview': return <Overview onNavigate={setCurrentPage} />;
+      case 'overview': return <Overview onNavigate={handleAdminNavigate} />;
       case 'trainees': return <Trainees />;
       case 'trainingdata': return <TrainingData />;
       case 'outcomes': return <Outcomes />;
       case 'autopsy': return <OutcomeAutopsy />;
       case 'skillgap': return <SkillGapAI />;
       case 'retention': return <RetentionProgression />;
-      case 'earlywarning': return <EarlyWarning onCreateIntervention={(w) => { setPendingWarning(w); setCurrentPage('interventions'); }} />;
+      case 'earlywarning': return <EarlyWarning onCreateIntervention={(w) => { setPendingWarning(w); handleAdminNavigate('interventions'); }} />;
       case 'interventions': return <Interventions pendingFromWarning={pendingWarning} />;
       case 'nextcohort': return <NextCohortLearning />;
       case 'providers': return <Providers />;
@@ -116,18 +161,18 @@ function App() {
       case 'passport': return <SkillPassport />;
       case 'privacy': return <PrivacyConsent />;
       case 'followups': return <FollowUps />;
-      default: return <Overview onNavigate={setCurrentPage} />;
+      default: return <Overview onNavigate={handleAdminNavigate} />;
     }
   };
 
   return (
     <ThemeProvider>
       <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+        <Sidebar currentPage={currentPage} onNavigate={handleAdminNavigate} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <DemoBanner />
-          <main className="flex-1 overflow-y-auto p-4 pt-16 lg:p-6 lg:pt-6">
-            <div className="mx-auto max-w-7xl animate-fade-in">
+          <main ref={adminMainRef} className="flex-1 overflow-y-auto p-4 pt-16 lg:p-6 lg:pt-6">
+            <div key={currentPage} className="mx-auto max-w-7xl animate-fade-in">
               {renderPage()}
               {/* Admin Actions Footer */}
               <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-6 dark:border-gray-800">
@@ -140,7 +185,12 @@ function App() {
                 </button>
 
                 <button
-                  onClick={() => { setTraineeId(null); setMode('trainee'); }}
+                  onClick={() => {
+                    setTraineeId(null);
+                    setMode('trainee');
+                    if (adminMainRef.current) adminMainRef.current.scrollTop = 0;
+                    window.scrollTo({ top: 0, left: 0 });
+                  }}
                   className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Switch to Trainee Portal Login →
