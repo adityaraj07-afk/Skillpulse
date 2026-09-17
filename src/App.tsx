@@ -18,6 +18,7 @@ import { PrivacyConsent } from '@/pages/PrivacyConsent';
 import { TrainingData } from '@/pages/TrainingData';
 import { FollowUps } from '@/pages/FollowUps';
 import { Integrations } from '@/pages/Integrations';
+import { IdentityProfiles } from '@/pages/IdentityProfiles';
 import { ReportExportModal } from '@/components/ReportExportModal';
 import { FileText } from 'lucide-react';
 import { TraineeLogin } from '@/pages/trainee/TraineeLogin';
@@ -161,6 +162,7 @@ function App() {
       case 'passport': return <SkillPassport />;
       case 'privacy': return <PrivacyConsent />;
       case 'followups': return <FollowUps />;
+      case 'identity': return <IdentityProfiles onNavigate={handleAdminNavigate} />;
       default: return <Overview onNavigate={handleAdminNavigate} />;
     }
   };
