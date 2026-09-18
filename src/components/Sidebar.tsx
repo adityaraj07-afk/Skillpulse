@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Target, Stethoscope, BrainCircuit,
   TrendingUp, AlertTriangle, Wrench, GraduationCap, Building2,
   MapPin, BadgeCheck, ShieldCheck, Menu, X, Moon, Sun, Activity,
-  ClipboardList, Send, Server, Fingerprint,
+  ClipboardList, Send, Server, Fingerprint, ArrowRight,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import type { ReactNode } from 'react';
@@ -43,9 +43,10 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   currentPage: PageKey;
   onNavigate: (page: PageKey) => void;
+  onSwitchToTrainee?: () => void;
 }
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+export function Sidebar({ currentPage, onNavigate, onSwitchToTrainee }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
@@ -86,8 +87,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Theme toggle */}
-      <div className="border-t border-gray-200 px-3 py-3 dark:border-gray-800">
+      {/* Theme toggle & Trainee portal */}
+      <div className="border-t border-gray-200 px-3 py-3 dark:border-gray-800 space-y-1">
         <button
           onClick={toggleTheme}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
@@ -95,6 +96,19 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
+
+        {onSwitchToTrainee && (
+          <button
+            onClick={() => {
+              setMobileOpen(false);
+              onSwitchToTrainee();
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          >
+            <ArrowRight className="h-5 w-5" />
+            <span>Trainee Portal</span>
+          </button>
+        )}
       </div>
     </div>
   );
