@@ -31,11 +31,51 @@ export interface VerifiedProfile {
   qrHash: string;
 }
 
+export interface DuplicateCandidatePair {
+  id: string;
+  confidenceScore: number;
+  matchReasons: string[];
+  status: 'Pending' | 'Merged' | 'Dismissed';
+  primaryProfile: {
+    id: string;
+    fullName: string;
+    skillPulseId: string;
+    email: string;
+    mobile: string;
+    provider: string;
+    district: string;
+    skills: string[];
+    education: string;
+    certifications: string[];
+    aadhaarMasked: string;
+  };
+  duplicateProfile: {
+    id: string;
+    fullName: string;
+    skillPulseId: string;
+    email: string;
+    mobile: string;
+    provider: string;
+    district: string;
+    skills: string[];
+    education: string;
+    certifications: string[];
+    aadhaarMasked: string;
+  };
+  mergedResult?: {
+    unifiedSkillPulseId: string;
+    unifiedSkills: string[];
+    unifiedCertifications: string[];
+    mergedAt: string;
+  };
+}
+
 const STORAGE_KEYS = {
   TRAINEES: 'skillpulse_trainees_v1',
   INTERVENTIONS: 'skillpulse_interventions_v1',
   AUDIT_LOGS: 'skillpulse_audit_logs_v1',
   VERIFIED_PROFILES: 'skillpulse_verified_profiles_v1',
+  DUPLICATE_PAIRS: 'skillpulse_duplicate_pairs_v1',
 };
 
 const defaultVerifiedProfiles: VerifiedProfile[] = [
@@ -117,6 +157,81 @@ const defaultVerifiedProfiles: VerifiedProfile[] = [
   },
 ];
 
+const defaultDuplicatePairs: DuplicateCandidatePair[] = [
+  {
+    id: 'dup-001',
+    confidenceScore: 96,
+    matchReasons: [
+      'Phonetic Name Match (Metaphone: RHL SHRM)',
+      'Identical Registered Mobile Number (+91 98765 43210)',
+      'Same Birth Year (2001) & Domicile District (Varanasi)',
+    ],
+    status: 'Pending',
+    primaryProfile: {
+      id: 'vp-001',
+      fullName: 'Rahul Sharma',
+      skillPulseId: 'SP-2026-IND-8942',
+      email: 'rahul.sharma@gmail.com',
+      mobile: '+91 98765 43210',
+      provider: 'PMKVY Tech Centre - Varanasi',
+      district: 'Varanasi',
+      skills: ['Python', 'SQL', 'Data Cleaning'],
+      education: 'B.Sc Computer Science (2024)',
+      certifications: ['NSQF Level 5 Data Associate'],
+      aadhaarMasked: 'XXXX XXXX 5821',
+    },
+    duplicateProfile: {
+      id: 'vp-dup-101',
+      fullName: 'Rahul K. Sharma',
+      skillPulseId: 'SP-TEMP-NSDC-3310',
+      email: 'rahul.sharma.nsdc@gmail.com',
+      mobile: '+91 98765 43210',
+      provider: 'NSDC Skill Hub - Varanasi Cantt',
+      district: 'Varanasi',
+      skills: ['Power BI', 'Advanced Excel', 'Tableau Basics'],
+      education: 'B.Sc CS (Final Year)',
+      certifications: ['Certificate in Business Analytics'],
+      aadhaarMasked: 'XXXX XXXX 5821',
+    },
+  },
+  {
+    id: 'dup-002',
+    confidenceScore: 92,
+    matchReasons: [
+      'UIDAI Zero-Knowledge Auth Hash Collision',
+      'Matching Domicile State & District (Ahmedabad, Gujarat)',
+      'Similar Date of Birth (Nov 1999)',
+    ],
+    status: 'Pending',
+    primaryProfile: {
+      id: 'vp-002',
+      fullName: 'Priya Patel',
+      skillPulseId: 'SP-2026-IND-4129',
+      email: 'priya.patel@gmail.com',
+      mobile: '+91 98123 45678',
+      provider: 'Government ITI Kubernagar',
+      district: 'Ahmedabad',
+      skills: ['Frontend Web Dev', 'React.js', 'Tailwind CSS'],
+      education: 'Diploma in IT',
+      certifications: ['NCVT Web Developer'],
+      aadhaarMasked: 'XXXX XXXX 8943',
+    },
+    duplicateProfile: {
+      id: 'vp-dup-102',
+      fullName: 'Priya D. Patel',
+      skillPulseId: 'SP-TEMP-DDU-7712',
+      email: 'priyapatel.jobs@yahoo.com',
+      mobile: '+91 98123 45678',
+      provider: 'DDU-GKY Training Center Ahmedabad',
+      district: 'Ahmedabad',
+      skills: ['Node.js API Development', 'PostgreSQL', 'Git & CI/CD'],
+      education: 'Diploma in Information Technology',
+      certifications: ['Full-Stack Backend Practitioner'],
+      aadhaarMasked: 'XXXX XXXX 8943',
+    },
+  },
+];
+
 type Listener = () => void;
 const listeners: Set<Listener> = new Set();
 
@@ -135,6 +250,7 @@ class DataService {
   private interventionsCache: Intervention[] | null = null;
   private auditLogsCache: AuditLog[] | null = null;
   private verifiedProfilesCache: VerifiedProfile[] | null = null;
+  private duplicatePairsCache: DuplicateCandidatePair[] | null = null;
 
   public subscribe(listener: Listener): () => void {
     listeners.add(listener);
@@ -387,15 +503,84 @@ class DataService {
     notifyListeners();
   }
 
+  // --- Duplicate Candidates & Deduplication ---
+  public getDuplicatePairs(): DuplicateCandidatePair[] {
+    if (this.duplicatePairsCache) return this.duplicatePairsCache;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.DUPLICATE_PAIRS);
+      if (stored) {
+        this.duplicatePairsCache = JSON.parse(stored);
+        return this.duplicatePairsCache!;
+      }
+    } catch (e) {
+      console.warn('Failed to read duplicate pairs from localStorage', e);
+    }
+    this.duplicatePairsCache = [...defaultDuplicatePairs];
+    this.persistDuplicatePairs();
+    return this.duplicatePairsCache;
+  }
+
+  public mergeDuplicatePair(pairId: string): DuplicateCandidatePair | null {
+    const list = [...this.getDuplicatePairs()];
+    const index = list.findIndex((p) => p.id === pairId);
+    if (index === -1) return null;
+
+    const pair = list[index];
+    const unifiedSkills = Array.from(
+      new Set([...pair.primaryProfile.skills, ...pair.duplicateProfile.skills])
+    );
+    const unifiedCertifications = Array.from(
+      new Set([...pair.primaryProfile.certifications, ...pair.duplicateProfile.certifications])
+    );
+
+    const mergedPair: DuplicateCandidatePair = {
+      ...pair,
+      status: 'Merged',
+      mergedResult: {
+        unifiedSkillPulseId: pair.primaryProfile.skillPulseId,
+        unifiedSkills,
+        unifiedCertifications,
+        mergedAt: new Date().toISOString().split('T')[0],
+      },
+    };
+
+    list[index] = mergedPair;
+    this.duplicatePairsCache = list;
+    this.persistDuplicatePairs();
+
+    this.addAuditLog({
+      action: 'Candidate Profile Deduplication Merged',
+      resource: `${pair.primaryProfile.fullName} (${pair.primaryProfile.skillPulseId}) <- ${pair.duplicateProfile.skillPulseId}`,
+      actor: 'AI Unified Profile Engine',
+      status: 'Allowed',
+      consentStatus: 'Consent Active',
+    });
+
+    notifyListeners();
+    return mergedPair;
+  }
+
+  public dismissDuplicatePair(pairId: string): void {
+    const list = [...this.getDuplicatePairs()];
+    const index = list.findIndex((p) => p.id === pairId);
+    if (index === -1) return;
+    list[index] = { ...list[index], status: 'Dismissed' };
+    this.duplicatePairsCache = list;
+    this.persistDuplicatePairs();
+    notifyListeners();
+  }
+
   public resetToDefault(): void {
     localStorage.removeItem(STORAGE_KEYS.TRAINEES);
     localStorage.removeItem(STORAGE_KEYS.INTERVENTIONS);
     localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
     localStorage.removeItem(STORAGE_KEYS.VERIFIED_PROFILES);
+    localStorage.removeItem(STORAGE_KEYS.DUPLICATE_PAIRS);
     this.traineesCache = null;
     this.interventionsCache = null;
     this.auditLogsCache = null;
     this.verifiedProfilesCache = null;
+    this.duplicatePairsCache = null;
     notifyListeners();
   }
 
@@ -436,6 +621,16 @@ class DataService {
       }
     } catch (e) {
       console.warn('Could not persist verified profiles', e);
+    }
+  }
+
+  private persistDuplicatePairs() {
+    try {
+      if (this.duplicatePairsCache) {
+        localStorage.setItem(STORAGE_KEYS.DUPLICATE_PAIRS, JSON.stringify(this.duplicatePairsCache));
+      }
+    } catch (e) {
+      console.warn('Could not persist duplicate pairs', e);
     }
   }
 }
